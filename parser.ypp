@@ -1,0 +1,99 @@
+%{
+        #include <iostream>
+        #include <cstdlib>
+        #include <string>
+        #include "ast.hpp"
+		
+        using namespace std;
+
+		extern int yylex();
+
+		void yyerror(string s) {
+			cerr << s << endl;
+			exit(EXIT_FAILURE);
+		}
+%}
+
+%union {
+	ExprAST* e;
+	double d;
+	string* s;
+	vector<ExprAST*>* v;
+	vector<string>* v1;
+	PrototypeAST* p;
+}
+
+%type <e> E PozivFje
+%type <v> NizE
+%type <v1> NizParametara
+%type <p> Potpis
+
+%token def_token extern_token
+%token<s> id_token 
+%token<d> num_token
+
+%left '+' '-'
+%left '*' '/'
+
+%%
+
+Program:		Program Naredba ';'
+			|	Naredba ';'
+			;
+Naredba:		def_token Potpis E				{
+													FunctionAST* f = new FunctionAST($2, $3);
+													f->codegen();
+													delete f;
+												}
+			|	E								{ /*TODO*/ }
+			|	extern_token Potpis				{ $2->codegen(); }
+			;
+Potpis:			id_token '(' NizParametara ')'	{
+													$$ = new PrototypeAST(*$1, *$3);
+													delete $1;	delete $3;
+												}
+NizParametara:	NizParametara id_token			{
+													$1->push_back(*$2);
+													$$ = $1;
+													delete $2;
+												}
+			|									{ $$ = new vector<string>(); }
+			;
+E:				E '+' E							{ $$ = new AddExprAST($1, $3); }
+			|	E '-' E							{ $$ = new SubExprAST($1, $3); }
+			|	E '*' E							{ $$ = new MulExprAST($1, $3); }
+			|	E '/' E							{ $$ = new DivExprAST($1, $3); }
+			|	'(' E ')'						{ $$ = $2; }
+			|	num_token						{ $$ = new NumberExprAST($1); }
+			|	id_token						{
+													$$ = new VariableExprAST(*$1);
+													delete $1;
+												}
+			|	PozivFje						{ $$ = $1; }
+			;
+PozivFje:		id_token '(' NizE ')'			{
+													$$ = new CallExprAST(*$1, *$3);
+													delete $1;	delete $3;
+												}
+			|	id_token '(' ')'				{
+													vector<ExprAST*> tmp;
+													$$ = new CallExprAST(*$1, tmp);
+													delete $1;
+												}
+			;		
+NizE: 			NizE ',' E						{
+													$1->push_back($3);
+													$$ = $1;
+												}
+			|	E								{
+													$$ = new vector<ExprAST*>();
+													$$->push_back($1);
+												}
+			;
+
+%%
+
+int main() {
+	yyparse();
+	return 0;
+}
