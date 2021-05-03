@@ -8,6 +8,7 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
+#include "llvm/IR/Verifier.h"
 
 using namespace std;
 using namespace llvm;
@@ -108,7 +109,10 @@ public:
     PrototypeAST(string s, vector<string> v)
     : Name(s), Args(v) {}
 
-    Value* codegen() const;
+    Function* codegen() const;
+    string getName() const {
+        return Name;
+    }
 
 private:
     string Name;
