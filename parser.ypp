@@ -93,7 +93,16 @@ NizE: 			NizE ',' E						{
 
 %%
 
+extern LLVMContext TheContext;
+extern Module* TheModule;
+
 int main() {
+	TheModule = new Module("Mirkov modul", TheContext);
+
 	yyparse();
+	
+	TheModule->print(outs(), nullptr);
+
+	delete TheModule;
 	return 0;
 }
