@@ -135,6 +135,21 @@ private:
     IfExprAST& operator=(const IfExprAST&);
 };
 
+class ForExprAST : public ExprAST {
+public:
+    ForExprAST(string s, ExprAST* e1, ExprAST* e2, ExprAST* e3, ExprAST* e4)
+        : Start(e1), End(e2), Step(e3), Body(e4), VarName(s) {}
+    
+    Value* codegen() const;
+    ~ForExprAST();
+
+private:
+    ExprAST *Start, *End, *Step, *Body;
+    string VarName;
+    ForExprAST(const ForExprAST&);
+    ForExprAST& operator=(const ForExprAST&);
+};
+
 class PrototypeAST {
 public:
     PrototypeAST(string s, vector<string> v)

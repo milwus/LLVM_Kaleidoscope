@@ -162,6 +162,62 @@ IfExprAST::~IfExprAST() {
     delete Else;
 }
 
+Value* ForExprAST::codegen() const {
+    Value* StartV = Start->codegen();
+    if (!StartV)
+        return nullptr;
+    
+    Function* f = Builder.GetInsertBlock()->getParent();
+    BasicBlock* LoopBB = BasicBlock::Create(TheContext, "loop", f);
+    Builder.CreateBr(LoopBB);
+    BasicBlock* PreheaderBB = Builder.GetInsertBlock();
+    Builder.SetInsertPoint(LoopBB);
+     
+    PHINode* Variable = Builder.CreatePHI(Type::getDoubleTy(TheContext), 2, VarName);
+    Variable->addIncoming(StartV, PreheaderBB);
+    
+    Value* OldVal = NamedValues[VarName];
+    NamedValues[VarName] = Variable;
+
+    Value* EndV = End->codegen();
+    if(!EndV)
+        return nullptr;
+    
+    Value* Tmp = Builder.CreateFCmpONE(EndV, ConstantFP::get(TheContext, APFloat(0.0)), "loopcond");
+    BasicBlock* Loop1BB = BasicBlock::Create(TheContext, "loop1", f);
+    BasicBlock* AfterLoopBB = BasicBlock::Create(TheContext, "afterloop", f);
+    Builder.CreateCondBr(Tmp, Loop1BB, AfterLoopBB);
+
+    Builder.SetInsertPoint(Loop1BB);
+    Value* BodyV = Body->codegen();
+    if (!BodyV)
+        return nullptr;
+    
+    Value* StepV = Step->codegen();
+    if (!StepV)
+        return nullptr;
+    Value* NextVar = Builder.CreateFAdd(Variable, StepV, "nextvar");
+    Builder.CreateBr(LoopBB);
+
+    BasicBlock* LoopEndBB = Builder.GetInsertBlock();
+    Variable->addIncoming(NextVar, LoopEndBB);
+
+    if (OldVal)
+        NamedValues[VarName] = OldVal;
+    else
+        NamedValues.erase(VarName);
+
+    Builder.SetInsertPoint(AfterLoopBB);
+    return ConstantFP::get(TheContext, APFloat(0.0));
+}
+
+ForExprAST::~ForExprAST() {
+    delete Start;
+    delete End;
+    delete Step;
+    delete Body;
+}
+
 Function* PrototypeAST::codegen() const {
     vector<Type*> tmp;
     for (unsigned i = 0; i < Args.size(); i++)

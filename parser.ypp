@@ -30,12 +30,12 @@
 %type <v1> NizParametara
 %type <p> Potpis
 
-%token def_token extern_token if_token then_token else_token
+%token def_token extern_token if_token then_token else_token for_token in_token
 %token<s> id_token 
 %token<d> num_token
 
 %left then_token
-%left else_token	//Mirko je stavio %left
+%left else_token in_token
 %left '<' '>'
 %left '+' '-'
 %left '*' '/'
@@ -84,7 +84,15 @@ E:				E '+' E							{ $$ = new AddExprAST($1, $3); }
 												}
 			|	PozivFje						{ $$ = $1; }
 			|	if_token E then_token E else_token E { $$ = new IfExprAST($2, $4, $6); }
-			;
+			|	for_token id_token '=' E ',' E ',' E in_token E {
+																	$$ = new ForExprAST(*$2, $4, $6, $8, $10);
+																	delete $2;
+																}
+				|	for_token id_token '=' E ',' E in_token E {
+																	$$ = new ForExprAST(*$2, $4, $6, new NumberExprAST(1.0), $8);
+																	delete $2;
+																}
+		;
 PozivFje:		id_token '(' NizE ')'			{
 													$$ = new CallExprAST(*$1, *$3);
 													delete $1;	delete $3;
