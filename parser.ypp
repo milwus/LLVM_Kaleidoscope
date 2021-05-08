@@ -12,6 +12,8 @@
 			cerr << s << endl;
 			exit(EXIT_FAILURE);
 		}
+
+		int brojac = 0;
 %}
 
 %union {
@@ -45,7 +47,13 @@ Naredba:		def_token Potpis E				{
 													f->codegen();
 													delete f;
 												}
-			|	E								{ /*TODO*/ }
+			|	E								{
+													vector<string> argumenti;
+													FunctionAST* f = new FunctionAST(new PrototypeAST("anonimna_fja_" + to_string(brojac++), argumenti), $1);
+
+													f->codegen();
+													delete f;
+												}
 			|	extern_token Potpis				{ $2->codegen(); }
 			;
 Potpis:			id_token '(' NizParametara ')'	{
@@ -97,7 +105,7 @@ extern LLVMContext TheContext;
 extern Module* TheModule;
 
 int main() {
-	TheModule = new Module("Mirkov modul", TheContext);
+	InitializeModuleAndPassManager();
 
 	yyparse();
 	

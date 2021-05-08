@@ -9,6 +9,8 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/LinkAllPasses.h"
 
 using namespace std;
 using namespace llvm;
@@ -133,5 +135,7 @@ private:
     FunctionAST(const FunctionAST&);
     FunctionAST& operator=(const FunctionAST&);
 };
+
+void InitializeModuleAndPassManager();
 
 #endif

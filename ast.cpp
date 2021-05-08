@@ -4,6 +4,7 @@ LLVMContext TheContext;
 IRBuilder<> Builder(TheContext);
 Module* TheModule;
 map<string, Value*> NamedValues;
+legacy::FunctionPassManager* TheFPM;
 
 Value* NumberExprAST::codegen() const {
 	return ConstantFP::get(TheContext, APFloat(Val));
@@ -141,10 +142,25 @@ Value* FunctionAST::codegen() const {
     Value* tmp = Body->codegen();
     if (tmp != nullptr){
         Builder.CreateRet(tmp);
+
         verifyFunction(*f);
+        TheFPM->run(*f);
+
         return f;
     }
 
     f->eraseFromParent();
     return nullptr;
+}
+
+void InitializeModuleAndPassManager(){
+	TheModule = new Module("Mirkov modul", TheContext);
+    TheFPM = new legacy::FunctionPassManager(TheModule);
+
+    TheFPM->add(createInstructionCombiningPass());
+    TheFPM->add(createReassociatePass());
+    TheFPM->add(createGVNPass());
+    TheFPM->add(createCFGSimplificationPass());
+
+    TheFPM->doInitialization();
 }
