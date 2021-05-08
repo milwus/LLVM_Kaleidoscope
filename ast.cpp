@@ -65,6 +65,26 @@ Value* DivExprAST::codegen() const {
     return Builder.CreateFDiv(L, R, "divtmp");
 }
 
+Value* LtExprAST::codegen() const {
+    Value* L = LHS->codegen();
+    Value* R = RHS->codegen();
+    
+    if (!L || !R)
+        return nullptr;
+    
+    return Builder.CreateUIToFP(Builder.CreateFCmpOLT(L, R, "lttmp"), Type::getDoubleTy(TheContext), "booltmp");
+}
+
+Value* GtExprAST::codegen() const {
+    Value* L = LHS->codegen();
+    Value* R = RHS->codegen();
+    
+    if (!L || !R)
+        return nullptr;
+    
+    return Builder.CreateUIToFP(Builder.CreateFCmpOGT(L, R, "gttmp"), Type::getDoubleTy(TheContext), "booltmp");
+}
+
 CallExprAST::~CallExprAST() {
     for (auto e: Args)
         delete e;
@@ -94,6 +114,52 @@ Value* CallExprAST::codegen() const {
     }
 
     return Builder.CreateCall(f, ArgsV, "calltmp");
+}
+
+Value* IfExprAST::codegen() const {
+    Value* CondV = Cond->codegen();
+    if (!CondV)
+        return nullptr;
+    
+    Value* Tmp = Builder.CreateFCmpONE(CondV, ConstantFP::get(TheContext, APFloat(0.0)), "ifcond");
+    
+    Function* f = Builder.GetInsertBlock()->getParent();
+
+    BasicBlock* ThenBB = BasicBlock::Create(TheContext, "then", f);
+    BasicBlock* ElseBB = BasicBlock::Create(TheContext, "else");    //Moze treci argument da bude , f. U tom slucaju ne moram da radim dodavanje naknadno (obelezeno "***")
+    BasicBlock* MergeBB = BasicBlock::Create(TheContext, "ifcont");
+    
+    Builder.CreateCondBr(Tmp, ThenBB, ElseBB);
+
+    Builder.SetInsertPoint(ThenBB);
+    Value* ThenV = Then->codegen();
+    if(!ThenV)
+        return nullptr;
+    Builder.CreateBr(MergeBB);
+    ThenBB = Builder.GetInsertBlock();
+
+    // ***
+    f->getBasicBlockList().push_back(ElseBB);   //getBasicBlockList vraca vektor BB-ova za funkciju f
+    Builder.SetInsertPoint(ElseBB);
+    Value* ElseV = Else->codegen();
+    if(!ElseV)
+        return nullptr;
+    Builder.CreateBr(MergeBB);
+    ElseBB = Builder.GetInsertBlock();
+    
+    f->getBasicBlockList().push_back(MergeBB);
+    Builder.SetInsertPoint(MergeBB);
+    PHINode* PHI = Builder.CreatePHI(Type::getDoubleTy(TheContext), 2, "iftmp");
+    PHI->addIncoming(ThenV, ThenBB);
+    PHI->addIncoming(ElseV, ElseBB);
+
+    return PHI;
+}
+
+IfExprAST::~IfExprAST() {
+    delete Cond;
+    delete Then;
+    delete Else;
 }
 
 Function* PrototypeAST::codegen() const {
@@ -144,7 +210,7 @@ Value* FunctionAST::codegen() const {
         Builder.CreateRet(tmp);
 
         verifyFunction(*f);
-        TheFPM->run(*f);
+        //TheFPM->run(*f);  //vrsi optimizaciju koda
 
         return f;
     }

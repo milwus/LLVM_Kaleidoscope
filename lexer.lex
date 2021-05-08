@@ -18,6 +18,9 @@
 
 def							return def_token;
 extern						return extern_token;
+if							return if_token;
+then						return then_token;
+else						return else_token;
 [a-zA-Z_][a-zA-Z_0-9]*		{
 								yylval.s = new string(yytext);
 								return id_token;
@@ -26,7 +29,7 @@ extern						return extern_token;
 								yylval.d = strtod(yytext, nullptr);
 								return num_token;
 							}
-[-+*/;(),]					return *yytext;
+[-+*/;(),<>]				return *yytext;
 [ \n\t]						{}
 .							{
 								cerr << "Leksicka greska: neprepoznat karakter '" << *yytext << "'" << endl;
