@@ -185,7 +185,7 @@ Value* ForExprAST::codegen() const {
     
     Value* Tmp = Builder.CreateFCmpONE(EndV, ConstantFP::get(TheContext, APFloat(0.0)), "loopcond");
     BasicBlock* Loop1BB = BasicBlock::Create(TheContext, "loop1", f);
-    BasicBlock* AfterLoopBB = BasicBlock::Create(TheContext, "afterloop", f);
+    BasicBlock* AfterLoopBB = BasicBlock::Create(TheContext, "afterloop");
     Builder.CreateCondBr(Tmp, Loop1BB, AfterLoopBB);
 
     Builder.SetInsertPoint(Loop1BB);
@@ -207,7 +207,9 @@ Value* ForExprAST::codegen() const {
     else
         NamedValues.erase(VarName);
 
+    f->getBasicBlockList().push_back(AfterLoopBB);
     Builder.SetInsertPoint(AfterLoopBB);
+
     return ConstantFP::get(TheContext, APFloat(0.0));
 }
 
