@@ -31,7 +31,7 @@ in						{ return in_token; }
 							yylval.d = strtod(yytext, nullptr);
 							return num_token;
 						}
-[-+*/;(),<>=]			{ return *yytext; }
+[-+*/;(),<>=!|:]		{ return *yytext; }
 #.*						{}
 [ \n\t]					{}
 .						{

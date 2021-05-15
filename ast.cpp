@@ -85,6 +85,16 @@ Value* GtExprAST::codegen() const {
     return Builder.CreateUIToFP(Builder.CreateFCmpOGT(L, R, "gttmp"), Type::getDoubleTy(TheContext), "booltmp");
 }
 
+Value* SeqExprAST::codegen() const {
+    Value* L = LHS->codegen();
+    Value* R = RHS->codegen();
+    
+    if (!L || !R)
+        return nullptr;
+    
+    return R;
+}
+
 CallExprAST::~CallExprAST() {
     for (auto e: Args)
         delete e;
@@ -268,7 +278,7 @@ Value* FunctionAST::codegen() const {
         Builder.CreateRet(tmp);
 
         verifyFunction(*f);
-        //TheFPM->run(*f);  //vrsi optimizaciju koda
+        TheFPM->run(*f);  //vrsi optimizaciju koda
 
         return f;
     }

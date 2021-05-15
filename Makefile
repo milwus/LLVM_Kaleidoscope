@@ -21,4 +21,4 @@ ast.o: ast.cpp ast.hpp
 
 .PHONY: clean
 clean:
-	rm -f *~ *.tab.* *.o *.output lex.yy.c kaleidoscope
+	rm -f *~ *.tab.* *.o *.output lex.yy.c kaleidoscope a.out *.ll *.s

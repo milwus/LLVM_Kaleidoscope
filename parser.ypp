@@ -34,11 +34,14 @@
 %token<s> id_token 
 %token<d> num_token
 
+%left ':'
 %left then_token
 %left else_token in_token
-%left '<' '>'
+%left '|'
+%left '<' '>' '='
 %left '+' '-'
 %left '*' '/'
+%nonassoc '!'
 
 %%
 
@@ -52,7 +55,7 @@ Naredba:	def_token Potpis E	{
 								}
 		|	E	{
 					vector<string> argumenti;
-					FunctionAST* f = new FunctionAST(new Prototype("anonimna_fja_" + to_string(brojac++), argumenti), $1
+					FunctionAST* f = new FunctionAST(new PrototypeAST("anonimna_fja_" + to_string(brojac++), argumenti), $1);
 					f->codegen();
 					delete f;
 				}
@@ -75,6 +78,10 @@ E:		E '+' E		{ $$ = new AddExprAST($1, $3); }
 	|	E '/' E		{ $$ = new DivExprAST($1, $3); }
 	|	E '<' E		{ $$ = new LtExprAST($1, $3); }
 	|	E '>' E		{ $$ = new GtExprAST($1, $3); }
+	|	'!' E		{ $$ = new IfExprAST($2, new NumberExprAST(0.0), new NumberExprAST(1.0)); }
+	|	E '|' E		{ $$ = new IfExprAST($1, new NumberExprAST(1.0), new IfExprAST($3, new NumberExprAST(1.0), new NumberExprAST(0.0))); }
+	|	E '=' E		{ $$ = new IfExprAST(new SubExprAST($1, $3), new NumberExprAST(0.0), new NumberExprAST(1.0)); }
+	|	E ':' E		{ $$ = new SeqExprAST($1, $3); }
 	|	'(' E ')'	{ $$ = $2; }
 	|	num_token	{ $$ = new NumberExprAST($1); }
 	|	id_token	{
