@@ -158,6 +158,21 @@ private:
     ForExprAST& operator=(const ForExprAST&);
 };
 
+class AssignExprAST : public ExprAST {
+public:
+    AssignExprAST(string n, ExprAST* e)
+    : Name(n), Expression(e) {}
+
+    Value* codegen() const;
+    ~AssignExprAST();
+
+private:
+    string Name;
+    ExprAST* Expression;
+    AssignExprAST(const AssignExprAST&);
+    AssignExprAST& operator=(const AssignExprAST&);
+};
+
 class PrototypeAST {
 public:
     PrototypeAST(string s, vector<string> v)

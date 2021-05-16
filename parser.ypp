@@ -30,15 +30,16 @@
 %type <v1> NizParametara
 %type <p> Potpis
 
-%token def_token extern_token if_token then_token else_token for_token in_token
+%token def_token extern_token if_token then_token else_token for_token in_token eq_token
 %token<s> id_token 
 %token<d> num_token
 
 %left ':'
 %left then_token
 %left else_token in_token
+%right '='
 %left '|'
-%left '<' '>' '='
+%left '<' '>' eq_token
 %left '+' '-'
 %left '*' '/'
 %nonassoc '!'
@@ -80,7 +81,7 @@ E:		E '+' E		{ $$ = new AddExprAST($1, $3); }
 	|	E '>' E		{ $$ = new GtExprAST($1, $3); }
 	|	'!' E		{ $$ = new IfExprAST($2, new NumberExprAST(0.0), new NumberExprAST(1.0)); }
 	|	E '|' E		{ $$ = new IfExprAST($1, new NumberExprAST(1.0), new IfExprAST($3, new NumberExprAST(1.0), new NumberExprAST(0.0))); }
-	|	E '=' E		{ $$ = new IfExprAST(new SubExprAST($1, $3), new NumberExprAST(0.0), new NumberExprAST(1.0)); }
+	|	E eq_token E		{ $$ = new IfExprAST(new SubExprAST($1, $3), new NumberExprAST(0.0), new NumberExprAST(1.0)); }
 	|	E ':' E		{ $$ = new SeqExprAST($1, $3); }
 	|	'(' E ')'	{ $$ = $2; }
 	|	num_token	{ $$ = new NumberExprAST($1); }
@@ -99,6 +100,10 @@ E:		E '+' E		{ $$ = new AddExprAST($1, $3); }
 														$$ = new ForExprAST(*$2, $4, $6, new NumberExprAST(1.0), $8);
 														delete $2;
 													}
+	|	id_token '=' E		{
+								$$ = new AssignExprAST(*$1, $3);
+								delete $1;
+							}
 	;
 PozivFje:	id_token '(' NizE ')'	{
 										$$ = new CallExprAST(*$1, *$3);

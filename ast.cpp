@@ -229,6 +229,19 @@ ForExprAST::~ForExprAST() {
     delete Body;
 }
 
+Value* AssignExprAST::codegen() const {
+    Value* r = Expression->codegen();
+    if (!r)
+        return nullptr;
+    
+    Builder.CreateStore(r, NamedValues[Name]);
+    return r;
+}
+
+AssignExprAST::~AssignExprAST() {
+    delete Expression;
+}
+
 Function* PrototypeAST::codegen() const {
     vector<Type*> tmp;
     for (unsigned i = 0; i < Args.size(); i++)
@@ -280,7 +293,7 @@ Value* FunctionAST::codegen() const {
         Builder.CreateRet(tmp);
 
         verifyFunction(*f);
-        TheFPM->run(*f);  //vrsi optimizaciju koda
+        //TheFPM->run(*f);  //vrsi optimizaciju koda
 
         return f;
     }
