@@ -23,6 +23,7 @@ then					{ return then_token; }
 else					{ return else_token; }
 for						{ return for_token; }
 in						{ return in_token; }
+var						{ return var_token; }
 "=="					{ return eq_token; }
 [a-zA-Z_][a-zA-Z_0-9]*	{
 							yylval.s = new string(yytext);

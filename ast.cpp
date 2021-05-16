@@ -242,6 +242,45 @@ AssignExprAST::~AssignExprAST() {
     delete Expression;
 }
 
+Value* VarExprAST::codegen() const {
+    Function* f = Builder.GetInsertBlock()->getParent();
+
+    vector<AllocaInst*> oldAllocas;
+    for (auto elem: VarNames)
+        oldAllocas.push_back(NamedValues[elem.first]);
+
+    for (auto elem: VarNames) {
+        AllocaInst* Alloca = CreateEntryBlockAlloca(f, elem.first);
+        NamedValues[elem.first] = Alloca;
+
+        Value* tmp = elem.second->codegen();
+        if (!tmp)
+            return nullptr;
+        
+        Builder.CreateStore(tmp, Alloca);
+    }
+
+    Value* b = Body->codegen();
+        if (!b)
+            return nullptr;
+    
+    for (unsigned i = 0; i < oldAllocas.size(); i++) {
+        if (oldAllocas[i])
+            NamedValues[VarNames[i].first] = oldAllocas[i];
+        else
+            NamedValues.erase(VarNames[i].first);
+    }
+    
+    return b;
+}
+
+VarExprAST::~VarExprAST() {
+    for (auto elem: VarNames)
+        delete elem.second;
+
+    delete Body;
+}
+
 Function* PrototypeAST::codegen() const {
     vector<Type*> tmp;
     for (unsigned i = 0; i < Args.size(); i++)

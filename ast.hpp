@@ -173,6 +173,21 @@ private:
     AssignExprAST& operator=(const AssignExprAST&);
 };
 
+class VarExprAST : public ExprAST {
+public:
+    VarExprAST(vector< pair<string, ExprAST*> > v, ExprAST* e)
+    : VarNames(v), Body(e) {}
+
+    Value* codegen() const;
+    ~VarExprAST();
+
+private:
+    vector< pair<string, ExprAST*> > VarNames;
+    ExprAST* Body;
+    VarExprAST(const VarExprAST&);
+    VarExprAST& operator=(const VarExprAST&);
+};
+
 class PrototypeAST {
 public:
     PrototypeAST(string s, vector<string> v)
