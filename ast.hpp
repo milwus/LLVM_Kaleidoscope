@@ -2,8 +2,11 @@
 #define __AST_HPP__ 1
 
 #include <iostream>
+#include <cstdlib>
 #include <string>
 #include <vector>
+
+/* Biblioteke za pisanje koda */
 #include "llvm/IR/Value.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/IRBuilder.h"
@@ -11,6 +14,14 @@
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/LinkAllPasses.h"
+
+/* Biblioteke za generisanje objektnog koda */
+#include "llvm/Support/Host.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/TargetRegistry.h"
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Target/TargetOptions.h"
+#include "llvm/Target/TargetMachine.h"
 
 using namespace std;
 using namespace llvm;

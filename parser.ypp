@@ -1,8 +1,6 @@
 %{
-        #include <iostream>
-        #include <cstdlib>
-        #include <string>
         #include "ast.hpp"
+		//#define DEBUG 1
 		
         using namespace std;
 
@@ -159,9 +157,58 @@ extern LLVMContext TheContext;
 extern Module* TheModule;
 
 int main() {
+	//yydebug = 1;
+
 	InitializeModuleAndPassManager();
+
 	yyparse();
-	TheModule->print(outs(), nullptr);
+
+	//Generisati kod za main
+
+	//TheModule->print(outs(), nullptr);
+
+	auto TargetTriple = sys::getDefaultTargetTriple();
+	InitializeAllTargetInfos();
+	InitializeAllTargets();
+	InitializeAllTargetMCs();
+	InitializeAllAsmParsers();
+	InitializeAllAsmPrinters();
+
+	string Error;
+	auto Target = TargetRegistry::lookupTarget(TargetTriple, Error);
+	if (!Target) {
+		cerr << Error << endl;
+		return 1;
+	}
+
+	auto CPU = "generic";
+	auto Features = "";
+
+	TargetOptions opt;
+	auto RM = Optional<Reloc::Model>();
+	auto TargetMachine = Target->createTargetMachine(TargetTriple, CPU, Features, opt, RM);
+
+	TheModule->setDataLayout(TargetMachine->createDataLayout());
+	TheModule->setTargetTriple(TargetTriple);
+
+	auto Filename = "output.o";
+	std::error_code EC;
+	raw_fd_ostream dest(Filename, EC, sys::fs::OF_None);
+	if (EC) {
+		cerr << "Could not open file: " << EC.message() << endl;
+		return 1;
+	}
+
+	legacy::PassManager pass;
+	auto FileType = CGFT_ObjectFile;
+	if(TargetMachine->addPassesToEmitFile(pass, dest, nullptr, FileType)) {
+		cerr << "TargetMachine can't emit a file of this type" << endl;
+		return 1;
+	}
+
+	pass.run(*TheModule);
+	//dest.flush();	//flush-uje sve iz dest
+	dest.close();	//implicitno poziva flush
 
 	delete TheModule;
 	return 0;

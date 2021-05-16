@@ -332,7 +332,7 @@ Value* FunctionAST::codegen() const {
         Builder.CreateRet(tmp);
 
         verifyFunction(*f);
-        //TheFPM->run(*f);  //vrsi optimizaciju koda
+        TheFPM->run(*f);  //optimizuje kod
 
         return f;
     }
