@@ -3,6 +3,7 @@
 LLVMContext TheContext;
 IRBuilder<> Builder(TheContext);
 Module* TheModule;
+/* Zbog SSA forme ne mozemo imati vise od jedne dodele nekoj promenljivoj. Ako umesto registarskih promenljivih baratamo njihovim memorijskim lokacijama, mozemo ih neograniceno menjati. SSA i dalje vazi, i zaista cemo svaki put praviti nove promenljive, ali one ce pokazivati na istu memoriju koju menjamo. Tome sluze AllocaInst objekti*/
 map<string, AllocaInst*> NamedValues;
 legacy::FunctionPassManager* TheFPM;
 
@@ -136,8 +137,8 @@ Value* IfExprAST::codegen() const {
     Function* f = Builder.GetInsertBlock()->getParent();
 
     BasicBlock* ThenBB = BasicBlock::Create(TheContext, "then", f);
-    BasicBlock* ElseBB = BasicBlock::Create(TheContext, "else");    //Moze treci argument da bude , f. U tom slucaju ne moram da radim dodavanje naknadno (obelezeno "***")
-    BasicBlock* MergeBB = BasicBlock::Create(TheContext, "ifcont");
+    BasicBlock* ElseBB = BasicBlock::Create(TheContext, "else");
+    BasicBlock* MergeBB = BasicBlock::Create(TheContext, "ifcont");    //Moze treci argument u else i ifcont da bude f, kao sto je u then. U tom slucaju ne moram da radim dodavanje naknadno (obelezeno "***")
     
     Builder.CreateCondBr(Tmp, ThenBB, ElseBB);
 
@@ -146,10 +147,12 @@ Value* IfExprAST::codegen() const {
     if(!ThenV)
         return nullptr;
     Builder.CreateBr(MergeBB);
-    ThenBB = Builder.GetInsertBlock();
+    ThenBB = Builder.GetInsertBlock();  //Then->codegen() moze da napravi nove BB-ove i da pise po njima. Odatle treba skociti na MergeBB pa je potrebno uhvatiti BB po kojem se trenutno pise (GetInsertBlock())
+    //ovaj problem demonstrira primer visestrukog grananja
 
     // ***
-    f->getBasicBlockList().push_back(ElseBB);   //getBasicBlockList vraca vektor BB-ova za funkciju f
+    //getBasicBlockList vraca vektor BB-ova za funkciju f
+    f->getBasicBlockList().push_back(ElseBB);
     Builder.SetInsertPoint(ElseBB);
     Value* ElseV = Else->codegen();
     if(!ElseV)
@@ -185,14 +188,14 @@ Value* ForExprAST::codegen() const {
     
     Builder.CreateBr(LoopBB);
     Builder.SetInsertPoint(LoopBB);
-     
+
+     //cuvamo staru promenljivu sa imenom VarName, jer ce je nova VarName promenljiva zakloniti
     AllocaInst* OldVal = NamedValues[VarName];
-    NamedValues[VarName] =  Alloca;
+    NamedValues[VarName] = Alloca;
 
     Value* EndV = End->codegen();
     if(!EndV)
         return nullptr;
-    
     Value* Tmp = Builder.CreateFCmpONE(EndV, ConstantFP::get(TheContext, APFloat(0.0)), "loopcond");
     BasicBlock* Loop1BB = BasicBlock::Create(TheContext, "loop1", f);
     BasicBlock* AfterLoopBB = BasicBlock::Create(TheContext, "afterloop");
@@ -202,7 +205,6 @@ Value* ForExprAST::codegen() const {
     Value* BodyV = Body->codegen();
     if (!BodyV)
         return nullptr;
-    
     Value* StepV = Step->codegen();
     if (!StepV)
         return nullptr;
@@ -211,6 +213,7 @@ Value* ForExprAST::codegen() const {
     Builder.CreateStore(NextVar, Alloca);
     Builder.CreateBr(LoopBB);
 
+    //vracam staru VarName promenljivu ako je postojala
     if (OldVal)
         NamedValues[VarName] = OldVal;
     else
@@ -218,7 +221,6 @@ Value* ForExprAST::codegen() const {
 
     f->getBasicBlockList().push_back(AfterLoopBB);
     Builder.SetInsertPoint(AfterLoopBB);
-
     return ConstantFP::get(TheContext, APFloat(0.0));
 }
 
@@ -245,10 +247,12 @@ AssignExprAST::~AssignExprAST() {
 Value* VarExprAST::codegen() const {
     Function* f = Builder.GetInsertBlock()->getParent();
 
+     //cuvamo stare promenljive
     vector<AllocaInst*> oldAllocas;
     for (auto elem: VarNames)
         oldAllocas.push_back(NamedValues[elem.first]);
 
+    //generisemo kod za svaku od novih promenljivih i smestamo u mapu
     for (auto elem: VarNames) {
         AllocaInst* Alloca = CreateEntryBlockAlloca(f, elem.first);
         NamedValues[elem.first] = Alloca;
@@ -264,6 +268,7 @@ Value* VarExprAST::codegen() const {
         if (!b)
             return nullptr;
     
+    //vracanje starih vrednosti
     for (unsigned i = 0; i < oldAllocas.size(); i++) {
         if (oldAllocas[i])
             NamedValues[VarNames[i].first] = oldAllocas[i];
@@ -277,7 +282,6 @@ Value* VarExprAST::codegen() const {
 VarExprAST::~VarExprAST() {
     for (auto elem: VarNames)
         delete elem.second;
-
     delete Body;
 }
 
@@ -305,12 +309,14 @@ FunctionAST::~FunctionAST() {
 Value* FunctionAST::codegen() const {
     Function* f = TheModule->getFunction(Proto->getName());
 
+    //ako funkcija f ne postoji u Modulu napravi je tako sto ces izgenerisati samo kod njenog prototipa, za pocetak
     if (!f)
         f = Proto->codegen();
-    
+    //da li je generisanje prototipa uspelo (ako f nije postojala) ILI da li, ako f postoji nije null
     if (!f)
         return nullptr;
-    
+
+    //ako je f vec postojala u Modulu prethodni if-ovi se preskacu. Treba proveriti je f bila samo deklarisana(sto je ok) ili definisana (sto nije ok). Ovde proveravam da li je f definisana (da li je telo funkcije f prazno)
     if (!f->empty()) {
         cerr << "Funkcija " << Proto->getName() << " ne moze da se redefinise" << endl;
         return nullptr;
@@ -328,7 +334,7 @@ Value* FunctionAST::codegen() const {
     }
 
     Value* tmp = Body->codegen();
-    if (tmp != nullptr){
+    if (tmp != nullptr) {
         Builder.CreateRet(tmp);
 
         verifyFunction(*f);
@@ -342,7 +348,7 @@ Value* FunctionAST::codegen() const {
 }
 
 void InitializeModuleAndPassManager(){
-	TheModule = new Module("Mirkov modul", TheContext);
+	TheModule = new Module("Milwus's module", TheContext);
     TheFPM = new legacy::FunctionPassManager(TheModule);
 
     TheFPM->add(createInstructionCombiningPass());
